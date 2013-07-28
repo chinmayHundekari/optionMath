@@ -14,6 +14,7 @@ class Option:
         self.rf = float(rf)
         self.vol = float(vol)
         self.t = float(t)
+        self.calc_D()
 
     def calc_D(self):
         self.d1 = ((math.log(self.s/self.k) +
@@ -37,19 +38,15 @@ class Option:
         else:
             return -norm.cdf(-self.d1)
 
-    def get_theta(self, dt=1.0/365, callorput='C'):
+    def get_theta(self, callorput='C'):
+        t1 = self.t
+        _b_ = math.e**-(self.rf* t1)
         if callorput == 'C':
-            self.t += dt
-            after_call_price = self.get_call()
-            self.t -= dt
-            org_call_price = self.get_call()
-            return (after_call_price - org_call_price) * -1.0
+            theta = -self.s * norm.pdf(self.d1) * self.vol / (2 * self.t ** 0.5) - (1.0+self.rf) * self.k * _b_ *  norm.cdf(self.d2)
         else:
-            self.t += dt
-            after_put_price = self.get_put()
-            self.t -= dt
-            org_put_price = self.get_put()
-            return (after_put_price - org_put_price) * -1.0
+            theta = -(-self.s * norm.pdf(self.d1) * self.vol /(2 * self.t **0.5) + (1.0+self.rf) *self.k * _b_ * norm.cdf(-self.d2))
+        return theta / 365
+
 
     def get_vega(self):
         return self.s * norm.pdf(self.d1) * (self.t) ** 0.5 / 100
@@ -76,6 +73,7 @@ class Option:
 
     def print_greeks(self, price, callorput):
         self.vol = self.get_iv(price, callorput)
+        self.calc_D()
         delta = self.get_delta(callorput=callorput)
         theta = self.get_theta(callorput=callorput)
         vega = self.get_vega()
@@ -83,3 +81,25 @@ class Option:
         print "Theta :", theta
         print "Vega  :", vega
         print "Vol   :", self.vol * 100
+
+    def getGreeks(self, price, callorput):
+        self.vol = self.get_iv(price, callorput)
+        self.calc_D()
+        delta = self.get_delta(callorput=callorput)
+        theta = self.get_theta(callorput=callorput)
+        vega = self.get_vega()
+        return delta, theta, vega, self.vol
+
+  
+    def getProbITM(self, be, bo):
+        v = self.vol * math.sqrt(self.t*256)/math.sqrt(256)
+        if be:
+            becdf = 1 - norm.cdf(be[0],self.s,self.s*v)
+        else:
+            becdf = 1.0
+        if bo:
+            bocdf = 1.0 - norm.cdf(bo[0],self.s,self.s*v)
+        else:
+            bocdf = 0.0
+        print "Probability of ITM",(becdf-bocdf) * 100, "%"
+        return becdf-bocdf
