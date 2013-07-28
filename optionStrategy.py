@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+
 ## Long 250 95 Call 5.5
 def drange(start, stop, step):
 	r = start
@@ -51,50 +52,12 @@ def processOptionStrategy(strat, price_point):
 	else:
 		print "dumbass...Long or short"
 
-def plotStrategy(strats, min1=0.9, max1=1.1):
-	stratvals = []
-	min = 100000
-	max = 0
-	xticks = []
-	for row in strats:
-	    valstr = row.split(' ')[2]
-	    if valstr == 'Stock':
-	        val = float(row.split(' ')[3])
-	        xticks.append(val)
-	    else:
-	        val = float(valstr)
-            if val < min:
-                min = val
-            if val > max:
-            	max = val
-            stratvals.append(val)
-            xticks.append(val)
-	yvals = []
-	xvals = []
-	max = max * max1  
-	min = min * min1
-	for i in drange(min, max, (max - min) / 200.0 ):
-		xvals.append(i)
-		sum = 0
-		for strat in strats:
-			sum = sum + processOptionStrategy(strat, i)
-		yvals.append(sum)
-		if i in stratvals:
-			xticks.append(i)
-		if len(yvals) >3:
-			if (abs(yvals[-1] + yvals[-2]) < abs(yvals[-1] - yvals[-2])):
-				xticks.append(i-(max - min) / 200.0)
-	plt.plot(xvals, yvals)
-	plt.axhline(0, color='black')
-	plt.xticks(xticks)
-	plt.setp(plt.xticks()[1], rotation=60)
-	plt.grid(b=True, which='major', color='g', linestyle='--')
-	
-	plt.show()
-
-def listStrategy(strats, xticks):
+def listStrategy(strats):
 	stratvals = []
 	yticks = []
+	xticks = []
+	max = 0
+	min = 1000000
 	for row in strats:
 	    valstr = row.split(' ')[2]
 	    if valstr == 'Stock':
@@ -103,13 +66,48 @@ def listStrategy(strats, xticks):
 	    else:
 	        val = float(valstr)
                 xticks.append(val)
+            if val < min:
+                min = val
+            if val > max:
+            	max = val
             stratvals.append(val)
+        xticks.append(min * 0.9)
+        xticks.append(max * 1.1)
 	for i in xticks:
 		sum = 0
 		for strat in strats:
 			sum = sum + processOptionStrategy(strat, i)
-		yticks.append([i,sum])
-        for i in range(0, len(xticks)):
-            print yticks[i][0],"\t", yticks[i][1]
+		yticks.append((i,sum))
+        yticks.sort()
+        breakeven = []
+        breakodd = [] 
+        for i in range(0,len(yticks)-1):
+            if ((yticks[i][1] < 0) and (yticks[i+1][1] > 0)):
+                y1 = yticks[i][1]
+                y21 = yticks[i+1][1] - y1
+                x1 = yticks[i][0]
+                x21 = yticks[i+1][0] - x1
+                breakeven.append(-y1 * x21 / y21 + x1)
+            elif ((yticks[i][1] > 0) and (yticks[i+1][1] < 0)):
+                y1 = yticks[i][1]
+                y21 = yticks[i+1][1] - y1
+                x1 = yticks[i][0]
+                x21 = yticks[i+1][0] - x1
+                breakodd.append(-y1 * x21 / y21 + x1)
+#        print breakeven, breakodd
+#        print yticks
+        
+        return yticks, breakeven, breakodd
 	
+def plotStrategy(strats):
+    ticks, be, bo = listStrategy(strats)
+    xvals = [tick[0] for tick in ticks]
+    yvals = [tick[1] for tick in ticks]
+    plt.plot(xvals, yvals)
+    plt.axhline(0, color='black')
+    xvals = xvals +  be + bo
+    plt.xticks(xvals, rotation=45)
+    plt.grid(b=True, which='major', color='g', linestyle='--')
+    plt.show()
 	
+    
